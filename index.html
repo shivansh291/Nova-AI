@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nova AI — School Project (Groq)</title>
+<style>
+:root{color-scheme:light;--bg:#f5f6f8;--panel:#ffffff;--line:#dfe3e8;--text:#202733;--muted:#667085;--accent:#405a78}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text);min-height:100vh}
+.app{max-width:900px;margin:auto;min-height:100vh;display:flex;flex-direction:column;padding:20px}
+header{display:flex;align-items:center;gap:12px;padding:10px 0 18px;border-bottom:1px solid var(--line)}
+.logo{width:44px;height:44px;border-radius:12px;background:#405a78;color:#fff;display:grid;place-items:center;font-size:23px}
+h1{font-size:20px;margin:0}header p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.actions{margin-left:auto;display:flex;gap:8px}.btn{border:1px solid var(--line);background:#fff;color:var(--text);padding:9px 12px;border-radius:10px;cursor:pointer}.btn:hover{border-color:var(--accent)}
+main{flex:1;display:flex;flex-direction:column;min-height:55vh;padding:24px 0}
+.welcome{text-align:center;margin:auto;max-width:600px;padding:28px 0}.spark{font-size:38px}.welcome h2{font-size:29px;margin:8px 0}.welcome p{color:var(--muted)}
+.suggestions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:22px}.suggestions button{background:#fff;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 13px;cursor:pointer}
+#messages{display:flex;flex-direction:column;gap:16px}.msg{max-width:85%;padding:13px 16px;border-radius:16px;white-space:pre-wrap;overflow-wrap:anywhere}.user{align-self:flex-end;background:#e7edf4;color:#243447;border-bottom-right-radius:5px}.bot{align-self:flex-start;background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:5px}.label{font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:700;letter-spacing:.05em}.error{color:#ffb5b5}
+.composer{border:1px solid var(--line);background:#fff;border-radius:14px;padding:10px;display:flex;align-items:flex-end;gap:9px}.composer textarea{flex:1;resize:vertical;min-height:44px;max-height:160px;border:0;outline:0;background:transparent;color:var(--text);font:inherit;padding:10px}.send{background:var(--accent);border:0;color:white;border-radius:10px;padding:12px 17px;font-weight:600;cursor:pointer}.send:disabled{opacity:.5;cursor:wait}
+.foot{color:var(--muted);font-size:12px;text-align:center;padding:12px 0}.modal{position:fixed;inset:0;background:#000a;display:none;place-items:center;padding:20px}.modal.open{display:grid}.dialog{max-width:460px;width:100%;background:#fff;border:1px solid var(--line);padding:22px;border-radius:14px;box-shadow:0 16px 48px #20273322}.dialog h2{margin-top:0}.dialog label{display:block;margin:12px 0 6px}.dialog input,.dialog select{width:100%;padding:11px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--text)}.hint{color:var(--muted);font-size:12px}.dialog .row{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+@media(max-width:600px){.app{padding:14px}.actions .btn{padding:8px;font-size:12px}.msg{max-width:94%}.welcome h2{font-size:25px}}
+
+/* Rich response formatting: Markdown and MathJax */
+.msg .content p { margin: 0 0 0.85em; }
+.msg .content p:last-child { margin-bottom: 0; }
+.msg .content h1,.msg .content h2,.msg .content h3 { margin: .7em 0 .4em; line-height: 1.3; }
+.msg .content ul,.msg .content ol { padding-left: 1.5em; margin: .5em 0 .85em; }
+.msg .content li { margin: .25em 0; }
+.msg .content strong { font-weight: 750; }
+.msg .content blockquote { margin: .7em 0; padding-left: 1em; border-left: 3px solid var(--accent); color: #596579; }
+.msg .content pre { overflow-x: auto; padding: 12px; border-radius: 10px; background: #f0f2f5; color: #202733; }
+.msg .content code { font-family: ui-monospace,SFMono-Regular,Consolas,monospace; font-size: .9em; }
+.msg .content :not(pre) > code { background: #eef1f4; padding: .12em .35em; border-radius: 5px; }
+.msg .content table { border-collapse: collapse; display: block; overflow-x: auto; max-width: 100%; }
+.msg .content th,.msg .content td { border: 1px solid var(--line); padding: 6px 9px; }
+.msg .content mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width: 100%; margin: .9em 0 !important; }
+
+
+.msg .content .table-wrap { max-width:100%; overflow-x:auto; margin:.7em 0; }
+.msg .content .table-wrap table { width:100%; border-collapse:collapse; }
+.msg .content .table-wrap th { background:#f0f2f5; font-weight:700; }
+.msg .content .math-block { overflow-x:auto; }
+
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+ <div class="logo">✦</div><div><h1>Nova AI</h1><p>Your AI study and chat assistant</p></div>
+ <div class="actions"><button class="btn" id="settingsBtn">⚙ API setup</button><button class="btn" id="clearBtn">New chat</button></div>
+</header>
+<main>
+ <section class="welcome" id="welcome">
+  <div class="spark">✧</div><h2>How can I help you today?</h2>
+  <p>Ask a question, explore an idea, write something, or work through a problem.</p>
+  <div class="suggestions">
+   <button>Explain a complex topic simply</button>
+   <button>Help me write a professional email</button>
+   <button>Suggest ideas for a weekend project</button>
+  </div>
+ </section>
+ <section id="messages" aria-live="polite"></section>
+</main>
+<form class="composer" id="chatForm">
+ <textarea id="prompt" rows="1" placeholder="Message Nova AI..." aria-label="Your message"></textarea>
+ <button class="send" id="sendBtn" type="submit">Send ↑</button>
+</form>
+<div class="foot">Powered by Groq · AI assistant</div>
+</div>
+<div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+ <div class="dialog">
+  <h2 id="settingsTitle">Connect Groq</h2>
+  <p class="hint">Paste your Groq API key for this browser session. It is not saved in this HTML file or local storage. Direct browser use is for demos only; the key can still be seen in browser network tools while requests are made.</p>
+  <label for="apiKey">Groq API key</label><input id="apiKey" type="password" placeholder="Paste API key" autocomplete="off">
+  <label for="model">Model</label><select id="model"><option value="openai/gpt-oss-20b" selected>openai/gpt-oss-20b (recommended)</option><option value="openai/gpt-oss-120b">openai/gpt-oss-120b</option><option value="qwen/qwen3.8-27b">qwen/qwen3.8-27b</option></select>
+  <div class="row"><button class="btn" id="cancelSettings" type="button">Cancel</button><button class="send" id="saveSettings" type="button">Use key</button></div>
+ </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['\\(', '\\)']],
+    displayMath: [['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] },
+  startup: { typeset: false }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+<script>
+const $ = id => document.getElementById(id);
+let apiKey = "";
+const DEFAULT_MODEL = "openai/gpt-oss-20b";
+let model = DEFAULT_MODEL;
+try {
+  const savedModel = localStorage.getItem("nova-ai-groq-model");
+  if (savedModel) model = savedModel;
+} catch (_) {}
+const HISTORY_KEY = "nova-ai-groq-chat-v1";
+let history = [];
+const welcome = $("welcome"), messages = $("messages"), promptBox = $("prompt"), sendBtn = $("sendBtn");
+const SYSTEM_PROMPT = "You are Nova AI, a helpful, capable general-purpose AI assistant for a wide range of people and tasks. Help with writing, brainstorming, learning, planning, coding, problem-solving, and everyday questions. Be clear, practical, respectful, and honest when unsure. Adapt your tone and level of detail to the user. Reply in the language the user uses.";
+
+function saveHistory() {
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch (_) {}
+}
+function renderSavedHistory() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    if (!Array.isArray(saved)) return;
+    history = saved.filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string");
+    for (const item of history) addMessage(item.role === "user" ? "user" : "model", item.content);
+    if (!history.length) welcome.style.display = "block";
+  } catch (_) { history = []; }
+}
+function ensureModelSelected() {
+  const select = $("model");
+  const hasModel = Array.from(select.options).some(option => option.value === model);
+  if (!hasModel) model = DEFAULT_MODEL;
+  select.value = model;
+  if (!select.value) {
+    model = DEFAULT_MODEL;
+    select.value = DEFAULT_MODEL;
+  }
+}
+function showSettings(){
+  $("apiKey").value=apiKey;
+  ensureModelSelected();
+  $("settingsModal").classList.add("open");
+}
+function hideSettings(){ $("settingsModal").classList.remove("open"); }
+$("settingsBtn").addEventListener("click",showSettings);
+$("cancelSettings").addEventListener("click",hideSettings);
+$("saveSettings").addEventListener("click",()=>{
+  apiKey=$("apiKey").value.trim();
+  model=$("model").value || DEFAULT_MODEL;
+  try { localStorage.setItem("nova-ai-groq-model", model); } catch (_) {}
+  hideSettings();
+});
+$("settingsModal").addEventListener("click",e=>{if(e.target===$("settingsModal"))hideSettings();});
+$("clearBtn").addEventListener("click",()=>{
+  history=[]; messages.replaceChildren(); welcome.style.display="block";
+  try { localStorage.removeItem(HISTORY_KEY); } catch (_) {}
+});
+document.querySelectorAll(".suggestions button").forEach(b=>b.addEventListener("click",()=>{promptBox.value=b.textContent;promptBox.focus();}));
+
+function escapeHTML(value) {
+  return String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+function renderInlineFallback(value) {
+  let text = escapeHTML(value);
+  const protectedParts = [];
+  const protect = raw => {
+    const token = `NOVAPROTECTED${protectedParts.length}TOKEN`;
+    protectedParts.push(raw);
+    return token;
+  };
+  // Keep LaTeX intact while applying Markdown formatting.
+  text = text.replace(/\\\\\(([\s\S]*?)\\\\\)/g, (_, m) => protect(`\\(${m}\\)`));
+  text = text.replace(/\\\\\[([\s\S]*?)\\\\\]/g, (_, m) => protect(`\\[${m}\\]`));
+  text = text.replace(/`([^`]+)`/g, (_, code) => protect(`<code>${code}</code>`));
+  text = text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  text = text.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>");
+  return text.replace(/NOVAPROTECTED(\d+)TOKEN/g, (_, n) => protectedParts[Number(n)]);
+}
+function renderMarkdownFallback(markdown) {
+  const lines = String(markdown).replace(/\r\n?/g,"\n").split("\n");
+  const output = [];
+  let paragraph = [], listType = null, listItems = [], codeLines = [], inCode = false;
+  const flushParagraph = () => {
+    if (paragraph.length) {
+      output.push("<p>" + paragraph.map(renderInlineFallback).join("<br>") + "</p>");
+      paragraph = [];
+    }
+  };
+  const flushList = () => {
+    if (!listType) return;
+    const tag = listType;
+    output.push("<" + tag + ">" + listItems.map(item => "<li>" + renderInlineFallback(item) + "</li>").join("") + "</" + tag + ">");
+    listType = null; listItems = [];
+  };
+  const isTableDivider = line => /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
+  const splitTableRow = line => line.trim().replace(/^\|/,"").replace(/\|$/,"").split("|").map(cell => cell.trim());
+  for (let i=0; i<lines.length; i++) {
+    const line = lines[i];
+    if (/^\s*```/.test(line)) {
+      flushParagraph(); flushList();
+      if (inCode) {
+        output.push("<pre><code>" + codeLines.map(escapeHTML).join("\n") + "</code></pre>");
+        codeLines = []; inCode = false;
+      } else inCode = true;
+      continue;
+    }
+    if (inCode) { codeLines.push(line); continue; }
+    if (!line.trim()) { flushParagraph(); flushList(); continue; }
+
+    // Markdown tables (GitHub-flavoured syntax).
+    if (line.includes("|") && i+1 < lines.length && isTableDivider(lines[i+1])) {
+      flushParagraph(); flushList();
+      const headers = splitTableRow(line);
+      i += 2;
+      const rows = [];
+      while (i < lines.length && lines[i].trim() && lines[i].includes("|")) {
+        rows.push(splitTableRow(lines[i])); i++;
+      }
+      i--;
+      output.push("<div class=\"table-wrap\"><table><thead><tr>" +
+        headers.map(cell => "<th>" + renderInlineFallback(cell) + "</th>").join("") +
+        "</tr></thead><tbody>" + rows.map(row => "<tr>" +
+          headers.map((_, idx) => "<td>" + renderInlineFallback(row[idx] || "") + "</td>").join("") +
+          "</tr>").join("") + "</tbody></table></div>");
+      continue;
+    }
+    if (/^\s*#{1,6}\s+/.test(line)) {
+      flushParagraph(); flushList();
+      const match = line.match(/^\s*(#{1,6})\s+(.*)$/);
+      const level = match[1].length;
+      output.push("<h" + level + ">" + renderInlineFallback(match[2]) + "</h" + level + ">");
+      continue;
+    }
+    if (/^\s*>\s?/.test(line)) {
+      flushParagraph(); flushList();
+      output.push("<blockquote>" + renderInlineFallback(line.replace(/^\s*>\s?/,"")) + "</blockquote>");
+      continue;
+    }
+    const unordered = line.match(/^\s*[-*+]\s+(.*)$/);
+    const ordered = line.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (unordered || ordered) {
+      flushParagraph();
+      const nextType = unordered ? "ul" : "ol";
+      if (listType && listType !== nextType) flushList();
+      listType = nextType;
+      listItems.push((unordered || ordered)[1]);
+      continue;
+    }
+    flushList();
+    // Preserve display math as a standalone block.
+    if (/^\s*\\\\\[\s*$/.test(line)) {
+      flushParagraph();
+      const math = [line.trim()];
+      while (i+1 < lines.length) {
+        i++; math.push(lines[i].trim());
+        if (/\\\\\]\s*$/.test(lines[i])) break;
+      }
+      output.push('<div class="math-block">' + math.map(escapeHTML).join("<br>") + "</div>");
+      continue;
+    }
+    paragraph.push(line);
+  }
+  if (inCode) output.push("<pre><code>" + codeLines.map(escapeHTML).join("\n") + "</code></pre>");
+  flushParagraph(); flushList();
+  return output.join("\n");
+}
+
+function renderMessageContent(body, text) {
+  if (window.marked && window.DOMPurify) {
+    body.innerHTML = DOMPurify.sanitize(marked.parse(text, { breaks: true, gfm: true }));
+  } else {
+    // This fallback escapes user/model HTML and only creates a small set of safe tags.
+    body.innerHTML = renderMarkdownFallback(text);
+  }
+  const typeset = () => {
+    if (window.MathJax && MathJax.typesetPromise) {
+      MathJax.typesetPromise([body]).catch(() => {});
+    }
+  };
+  if (window.MathJax && MathJax.startup && MathJax.startup.promise) {
+    MathJax.startup.promise.then(typeset).catch(() => {});
+  } else {
+    typeset();
+  }
+}
+
+function addMessage(role,text,isError=false){
+  welcome.style.display="none";
+  const el=document.createElement("div");
+  el.className="msg "+(role==="user"?"user":"bot")+(isError?" error":"");
+  const label=document.createElement("div");
+  label.className="label"; label.textContent=role==="user"?"YOU":"NOVA AI";
+  const body=document.createElement("div"); body.className="content";
+  renderMessageContent(body, text);
+  el.append(label,body); messages.append(el);
+  el.scrollIntoView({behavior:"smooth",block:"end"}); return body;
+}
+async function sendMessage(text){
+  if(!text.trim())return;
+  if(!apiKey){showSettings();return;}
+  addMessage("user",text);
+  history.push({role:"user",content:text});
+  promptBox.value=""; sendBtn.disabled=true; sendBtn.textContent="…";
+  const responseBody=addMessage("model","Thinking…");
+  try{
+    const response=await fetch("https://api.groq.com/openai/v1/chat/completions",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+apiKey},
+      body:JSON.stringify({
+        model:model,
+        messages:[{role:"system",content:SYSTEM_PROMPT},...history],
+        max_tokens:1200
+      })
+    });
+    let data={};
+    try { data=await response.json(); } catch (_) {}
+    if(!response.ok){
+      const message=data?.error?.message || `Request failed (${response.status})`;
+      if(response.status===429) throw new Error("Groq rate limit reached. Wait a little and try again. Details: "+message);
+      if(response.status===401||response.status===403) throw new Error("API key rejected or not permitted. Check your Groq API key. Details: "+message);
+      throw new Error(message);
+    }
+    const answer=data?.choices?.[0]?.message?.content?.trim();
+    if(!answer) throw new Error("Groq returned no text. Try another model or prompt.");
+    responseBody.textContent=answer;
+    history.push({role:"assistant",content:answer});
+    saveHistory();
+  }catch(err){
+    responseBody.textContent="Sorry, I couldn't get a response.\n"+err.message+"\n\nCheck your Groq API key, internet connection, model access and free-tier limits.";
+    responseBody.parentElement.classList.add("error");
+    history.pop();
+  }finally{
+    sendBtn.disabled=false; sendBtn.textContent="Send ↑"; promptBox.focus();
+  }
+}
+$("chatForm").addEventListener("submit",e=>{e.preventDefault();sendMessage(promptBox.value);});
+promptBox.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("chatForm").requestSubmit();}});
+renderSavedHistory();
+</script>
+</body>
+</html>
